@@ -21,16 +21,18 @@ import com.cmc.babysteps.data.repository.SignInRepository
 import com.cmc.babysteps.data.repository.SignUpRepository
 import com.cmc.babysteps.data.viewmodel.SignInViewModel
 import com.cmc.babysteps.data.viewmodel.SignUpViewModel
-import com.cmc.babysteps.ui.screens.home.HomeScreen
 import com.cmc.babysteps.ui.screens.home.OnboardingScreen
-import com.cmc.babysteps.ui.screens.reminder.ReminderScreen
 import com.cmc.babysteps.ui.screens.signin.SignInScreen
 import com.cmc.babysteps.ui.screens.signup.SignUpScreen
 import com.cmc.babysteps.ui.theme.BabyStepsTheme
 import com.cmc.babysteps.utils.FirebaseConfig
 import androidx.compose.ui.platform.LocalContext
 import com.cmc.babysteps.classes.Screen
-import com.cmc.babysteps.ui.screens.home.SplashScreen
+import com.cmc.babysteps.data.repository.CalendarRepository
+import com.cmc.babysteps.data.viewmodel.CalendarViewModel
+import com.cmc.babysteps.ui.screens.MainScreen
+import java.time.LocalDate
+import com.cmc.babysteps.data.local.AppDatabase
 
 class MainActivity : ComponentActivity() {
 
@@ -41,14 +43,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         FirebaseConfig.initialize(this)
 
-        // Demander la permission POST_NOTIFICATIONS si nécessaire
+        // Request notification permissions if necessary
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                // Demander la permission
+                // Request permission
                 ActivityCompat.requestPermissions(
                     this,
                     arrayOf(Manifest.permission.POST_NOTIFICATIONS),
@@ -59,45 +61,50 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BabyStepsTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
 
-                    val signUpRepository =
-                        SignUpRepository(FirebaseConfig.auth, FirebaseConfig.firestore)
+                    // Initialize repositories and view models
+                    val signUpRepository = SignUpRepository(FirebaseConfig.auth, FirebaseConfig.firestore)
                     val signInRepository = SignInRepository(FirebaseConfig.auth)
-
                     val signUpViewModel = SignUpViewModel(signUpRepository)
                     val signInViewModel = SignInViewModel(signInRepository)
 
-                    val context = LocalContext.current // Récupérer le contexte
+                    // Create AppDatabase instance to get CalendarDao
+                    val database = AppDatabase.getInstance(applicationContext)
+                    // Initialize CalendarRepository with DAO
+                    val calendarRepository = CalendarRepository(database.calendar())
+                    // Create CalendarViewModel with repository instance
+                    val calendarViewModel = CalendarViewModel(repository = calendarRepository)
 
-                    // Mise en place du NavHost avec toutes les destinations
+                    // Authentication flow
                     NavHost(navController = navController, startDestination = "splash") {
                         composable("splash") {
-                            SplashScreen(
-                                navToOnboarding = {
-                                    navController.navigate("onboarding") {
-                                        popUpTo("splash") { inclusive = true } // optional: remove splash from backstack
-                                    }
+                            // Check if user is logged in and navigate accordingly
+                            val currentUser = FirebaseConfig.auth.currentUser
+                            if (currentUser != null) {
+                                navController.navigate("main") {
+                                    popUpTo("splash") { inclusive = true }
                                 }
-                            )
+                            } else {
+                                navController.navigate(Screen.Onboarding.route) {
+                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                }
+                            }
                         }
                         composable("onboarding") {
-                            OnboardingScreen(
-                                onDone = {
-                                    navController.navigate("sign_in") {
-                                        popUpTo("onboarding") { inclusive = true } // optional: remove onboarding from backstack
-                                    }
+                            OnboardingScreen {
+                                navController.navigate("sign_in") {
+                                    popUpTo("onboarding") { inclusive = true }
                                 }
-                            )
+                            }
                         }
                         composable("sign_up") {
                             SignUpScreen(
-                                context,
+                                LocalContext.current,
                                 viewModel = signUpViewModel,
                                 navController = navController
                             )
@@ -106,22 +113,31 @@ class MainActivity : ComponentActivity() {
                             SignInScreen(
                                 navController = navController,
                                 viewModel = signInViewModel
+                            ) {
+                                // On successful login, navigate to main screen
+                                navController.navigate("main") {
+                                    popUpTo("sign_in") { inclusive = true }
+                                }
+                            }
+                        }
+                        // MainScreen with bottom navigation
+                        composable("main") {
+                            MainScreen(
+                                calendarViewModel = calendarViewModel,
+                                onCalendarDatesRequested = {
+                                    // Return default date range
+                                    val today = LocalDate.now()
+                                    Pair(today.minusDays(15), today.plusDays(15))
+                                }
                             )
                         }
-                        composable("home") {
-                            HomeScreen()
-                        }
-                        composable("reminder") {
-                            ReminderScreen()
-                        }
-
                     }
                 }
             }
         }
     }
 
-    // Gérer la réponse à la demande de permission
+    // Handle permission request results
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -130,11 +146,11 @@ class MainActivity : ComponentActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // La permission a été accordée
+                // Permission granted
                 Toast.makeText(this, "Permission de notifications accordée", Toast.LENGTH_SHORT)
                     .show()
             } else {
-                // La permission a été refusée
+                // Permission denied
                 Toast.makeText(this, "Permission de notifications refusée", Toast.LENGTH_SHORT)
                     .show()
             }

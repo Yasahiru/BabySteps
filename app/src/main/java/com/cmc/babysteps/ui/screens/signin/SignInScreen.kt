@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun SignInScreen(
     navController: NavController,
-    viewModel: SignInViewModel
+    viewModel: SignInViewModel,
+    function: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }

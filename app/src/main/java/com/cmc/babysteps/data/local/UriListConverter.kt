@@ -1,26 +1,21 @@
 package com.cmc.babysteps.data.local
 
+import android.net.Uri
+import androidx.room.ProvidedTypeConverter
 import androidx.room.TypeConverter
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.time.LocalDate
+import kotlin.collections.joinToString
 
+
+@ProvidedTypeConverter
 class UriListConverter {
     @TypeConverter
-    fun fromStringList(list: List<String>?): String {
-        return Gson().toJson(list)
+    fun fromUriList(list: List<Uri>?): String? {
+        return list?.joinToString(",") { it.toString() }
     }
 
     @TypeConverter
-    fun toStringList(data: String?): List<String> {
-        val listType = object : TypeToken<List<String>>() {}.type
-        return Gson().fromJson(data, listType)
+    fun toUriList(data: String?): List<Uri>? {
+        return data?.split(",")?.map { Uri.parse(it) }
     }
-
-    @TypeConverter
-    fun fromLocalDate(date: LocalDate): String = date.toString()
-
-    @TypeConverter
-    fun toLocalDate(dateString: String): LocalDate = LocalDate.parse(dateString)
 
 }
