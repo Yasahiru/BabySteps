@@ -15,8 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.PopUpToBuilder
 import androidx.navigation.compose.*
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -27,6 +25,7 @@ import java.time.LocalDate
 import kotlin.collections.forEach
 import kotlin.sequences.any
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("ContextCastToActivity")
 @Composable
 fun MainScreen(
@@ -35,7 +34,6 @@ fun MainScreen(
 ) {
     val navController = rememberNavController()
     val activity = LocalContext.current as Activity
-
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -91,6 +89,7 @@ fun MainScreen(
             }
         }
     }
+
 }
 
 data class BottomNavItem(

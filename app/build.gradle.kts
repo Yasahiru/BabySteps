@@ -80,6 +80,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.7.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("androidx.compose.foundation:foundation:1.7.8")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
 
 
     // Icons
